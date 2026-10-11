@@ -19,9 +19,9 @@ class MainActivity : Activity() {
         val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(22, 30, 22, 20); setBackgroundColor(Color.rgb(16,24,32)) }
         fun label(t:String, size:Float=18f): TextView = TextView(this).apply { text=t; textSize=size; setTextColor(Color.WHITE); gravity=Gravity.CENTER; setPadding(6,12,6,12) }
         root.addView(label("MINES ASSISTANT",26f).apply { setTypeface(null,Typeface.BOLD) })
-        status=label(); root.addView(status)
+        status=label(""); root.addView(status)
         val selector=LinearLayout(this).apply { gravity=Gravity.CENTER }
-        val minus=Button(this).apply { text="−" }; mineLabel=label(); val plus=Button(this).apply { text="+" }
+        val minus=Button(this).apply { text="−" }; mineLabel=label(""); val plus=Button(this).apply { text="+" }
         selector.addView(minus); selector.addView(mineLabel); selector.addView(plus); root.addView(selector)
         minus.setOnClickListener { if(mines>1){ mines--; reset() } }
         plus.setOnClickListener { if(mines<24){ mines++; reset() } }
