@@ -53,15 +53,7 @@ class CaptureService : Service() {
             val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
             try {
                 val now = SystemClock.elapsedRealtime()
-                if (!waitingForClearFrame) {
-                    if (now - lastProcessed < 900L) return@setOnImageAvailableListener
-                    overlayAction("com.snyftw.mines.HIDE_OVERLAY")
-                    hideRequestedAt = now
-                    waitingForClearFrame = true
-                    return@setOnImageAvailableListener
-                }
-                if (now - hideRequestedAt < 220L) return@setOnImageAvailableListener
-                waitingForClearFrame = false
+                if (now - lastProcessed < 1200L) return@setOnImageAvailableListener
                 lastProcessed = now
                 val plane = image.planes[0]
                 val buffer = plane.buffer
@@ -73,7 +65,7 @@ class CaptureService : Service() {
             } catch (_: Exception) { /* Keep capture alive on unusual frame formats. */ }
             finally {
                 image.close()
-                if (!waitingForClearFrame) overlayAction("com.snyftw.mines.SHOW_OVERLAY")
+
             }
         }, handler)
         display = projection?.createVirtualDisplay("MinesV21", metrics.widthPixels, metrics.heightPixels,
@@ -116,7 +108,9 @@ class CaptureService : Service() {
                 if (brightGreen>=15) selected.add(n)
             }
         }
-        val complete=(gems.size+bombs.size==25 && bombs.isNotEmpty())
+        val recognized = gems.size + bombs.size
+        // Require an almost-complete revealed board; 1-2 missed icons are tolerated.
+        val complete=(recognized >= 23 && bombs.isNotEmpty())
         val signature = gems.sorted().joinToString(",") + "|" + bombs.sorted().joinToString(",")
         if (complete) {
             incompleteFrames = 0
@@ -137,6 +131,7 @@ class CaptureService : Service() {
             .putIntegerArrayListExtra("bombs",bombs)
             .putIntegerArrayListExtra("selected",selected)
             .putExtra("complete",complete)
+            .putExtra("recognizedTiles",recognized)
             .putExtra("newRoundResult",newRoundResult)
             .putExtra("status",if(complete) "Full board detected" else "Scanning: ${gems.size + bombs.size}/25 recognized; ${25 - gems.size - bombs.size} unknown"))
     }
