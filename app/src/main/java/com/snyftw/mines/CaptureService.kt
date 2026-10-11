@@ -82,7 +82,7 @@ class CaptureService : Service() {
             if (green >= 3) gems.add(r * 5 + c + 1)
         }
         val signature = gems.joinToString(",")
-        if (signature == lastSignature) return
+        // Always broadcast detection results for debugging
         lastSignature = signature
         sendBroadcast(Intent("com.snyftw.mines.FRAME_RESULT").setPackage(packageName)
             .putIntegerArrayListExtra("gems", ArrayList(gems))
