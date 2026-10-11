@@ -53,7 +53,7 @@ class CaptureService : Service() {
             val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
             try {
                 val now = SystemClock.elapsedRealtime()
-                if (now - lastProcessed < 1200L) return@setOnImageAvailableListener
+                if (now - lastProcessed < 400L) return@setOnImageAvailableListener
                 lastProcessed = now
                 val plane = image.planes[0]
                 val buffer = plane.buffer
@@ -62,7 +62,9 @@ class CaptureService : Service() {
                 bitmap.copyPixelsFromBuffer(buffer)
                 analyze(bitmap, image.width, image.height)
                 bitmap.recycle()
-            } catch (_: Exception) { /* Keep capture alive on unusual frame formats. */ }
+            } catch (e: Exception) {
+                android.util.Log.e("MinesCapture", "Frame processing failed", e)
+            }
             finally {
                 image.close()
 
