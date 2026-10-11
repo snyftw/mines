@@ -25,7 +25,7 @@ class CaptureService : Service() {
         val data: Intent? = if(Build.VERSION.SDK_INT>=33) intent?.getParcelableExtra("resultData",Intent::class.java) else intent?.getParcelableExtra("resultData")
         if(data==null) { stopSelf(); return START_NOT_STICKY }
         val manager=getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        projection=manager.getMediaProjection(intent?.getIntExtra("resultCode",Activity.RESULT_CANCELED),data)
+        projection=manager.getMediaProjection((intent?.getIntExtra("resultCode",Activity.RESULT_CANCELED) ?: Activity.RESULT_CANCELED),data)
         val metrics=resources.displayMetrics
         reader=ImageReader.newInstance(metrics.widthPixels,metrics.heightPixels,PixelFormat.RGBA_8888,2)
         projection?.registerCallback(object: MediaProjection.Callback() { override fun onStop() { stopSelf() } },Handler(Looper.getMainLooper()))
