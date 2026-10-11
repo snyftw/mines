@@ -150,7 +150,7 @@ class OverlayService : Service() {
             && System.currentTimeMillis() - last.optLong("timestamp") < 10000L) return
         val outcome = when {
             selected.any { it in bombs } -> "loss"
-            selected.isNotEmpty() -> "probable_cashout"
+            selected.isNotEmpty() -> "unknown"
             else -> "unknown"
         }
         arr.put(JSONObject().put("outcome",outcome)
@@ -166,6 +166,7 @@ class OverlayService : Service() {
         val out=IntArray(25); val arr=rounds()
         for (i in 0 until arr.length()) {
             val round=arr.optJSONObject(i) ?: continue
+            if (round.optString("confidence") != "full") continue
             val b=round.optJSONArray("bombs") ?: continue
             for (j in 0 until b.length()) { val tile=b.optInt(j); if (tile in 1..25) out[tile-1]++ }
         }
