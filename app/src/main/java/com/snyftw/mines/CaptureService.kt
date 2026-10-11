@@ -61,32 +61,48 @@ class CaptureService : Service() {
         return START_NOT_STICKY
     }
     private fun analyze(bitmap: Bitmap, width: Int, height: Int) {
-        // Calibration for S24 Ultra Chrome portrait screenshot. Detects ONLY visibly green gem icons.
-        // Positions are fractions of the captured display and require the board to remain in place.
-        val xs = doubleArrayOf(.15, .31, .50, .675, .855)
-        val ys = doubleArrayOf(.25, .335, .418, .502, .585)
-        val gems = mutableListOf<Int>()
+        // Calibrated from S24 Ultra portrait screenshot, 709 x 1536.
+        // Board centers: x=107,230,354,478,602; y=385,512,640,767,895.
+        val xs = doubleArrayOf(107.0/709,230.0/709,354.0/709,478.0/709,602.0/709)
+        val ys = doubleArrayOf(385.0/1536,512.0/1536,640.0/1536,767.0/1536,895.0/1536)
+        val gems = arrayListOf<Int>()
+        val bombs = arrayListOf<Int>()
+        val selected = arrayListOf<Int>()
         for (r in 0..4) for (c in 0..4) {
-            val cx = (xs[c] * width).toInt()
-            val cy = (ys[r] * height).toInt()
-            var green = 0
-            for (dx in -2..2) for (dy in -2..2) {
-                val x = (cx + dx * (width / 170).coerceAtLeast(1)).coerceIn(0, width - 1)
-                val y = (cy + dy * (height / 330).coerceAtLeast(1)).coerceIn(0, height - 1)
-                val p = bitmap.getPixel(x, y)
-                val rr = android.graphics.Color.red(p)
-                val gg = android.graphics.Color.green(p)
-                val bb = android.graphics.Color.blue(p)
-                if (gg > 100 && gg > rr * 1.45 && gg > bb * 1.15) green++
+            val cx=(xs[c]*width).toInt(); val cy=(ys[r]*height).toInt()
+            var green=0; var red=0; var brightGreen=0; var brightRed=0
+            for (dy in -18..18 step 3) for (dx in -23..23 step 3) {
+                val x=(cx+dx*width/709).coerceIn(0,width-1)
+                val y=(cy+dy*height/1536).coerceIn(0,height-1)
+                val color=bitmap.getPixel(x,y)
+                val rr=android.graphics.Color.red(color)
+                val gg=android.graphics.Color.green(color)
+                val bb=android.graphics.Color.blue(color)
+                if (gg>42 && gg>rr*1.30 && gg>bb*1.08) {
+                    green++
+                    if (gg>135 && gg>rr*1.7) brightGreen++
+                }
+                if (rr>65 && rr>gg*1.45 && rr>bb*1.25) {
+                    red++
+                    if (rr>155 && rr>gg*1.9) brightRed++
+                }
             }
-            if (green >= 3) gems.add(r * 5 + c + 1)
+            val n=r*5+c+1
+            if (red>=6 && red>green/2) {
+                bombs.add(n)
+                if (brightRed>=5) selected.add(n)
+            } else if (green>=8) {
+                gems.add(n)
+                if (brightGreen>=8) selected.add(n)
+            }
         }
-        val signature = gems.joinToString(",")
-        // Always broadcast detection results for debugging
-        lastSignature = signature
+        val complete=(gems.size+bombs.size==25 && bombs.isNotEmpty())
         sendBroadcast(Intent("com.snyftw.mines.FRAME_RESULT").setPackage(packageName)
-            .putIntegerArrayListExtra("gems", ArrayList(gems))
-            .putExtra("status", "Visual gem detection (experimental)"))
+            .putIntegerArrayListExtra("gems",gems)
+            .putIntegerArrayListExtra("bombs",bombs)
+            .putIntegerArrayListExtra("selected",selected)
+            .putExtra("complete",complete)
+            .putExtra("status",if(complete) "Full board detected" else "Scanning tiles: ${gems.size+ bombs.size}/25"))
     }
     override fun onDestroy() {
         reader?.setOnImageAvailableListener(null, null)
