@@ -26,7 +26,7 @@ class OverlayService : Service() {
     private val selected = mutableSetOf<Int>()
     private var suggested: Int? = null
     private var complete = false
-    private var collapsed = false
+    private var collapsed = true
     private val prefs by lazy { getSharedPreferences("mines_v2", MODE_PRIVATE) }
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -47,7 +47,7 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        params = WindowManager.LayoutParams(dp(280), WindowManager.LayoutParams.WRAP_CONTENT,
+        params = WindowManager.LayoutParams(dp(230), WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply {
             gravity = Gravity.TOP or Gravity.START; x = dp(8); y = dp(145)
@@ -76,6 +76,7 @@ class OverlayService : Service() {
         })
         details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         panel.addView(details)
+        details.visibility = View.GONE
         status = label(13f); suggestion = label(14f, Color.rgb(135,235,165)); history = label(12f, Color.LTGRAY)
         details.addView(status); details.addView(suggestion); details.addView(history)
         board = GridLayout(this).apply { columnCount = 5 }
@@ -120,7 +121,11 @@ wm.addView(panel,params)
     private fun suggest() {
         val candidates=(1..25).filter { it !in gems && it !in bombs }
         val freq=counts()
-        suggested=candidates.minWithOrNull(compareBy<Int> { freq[it-1] }.thenBy { it })
+        suggested=candidates
+            .groupBy { freq[it-1] }
+            .minByOrNull { it.key }
+            ?.value
+            ?.randomOrNull(Random.Default)
     }
     private fun render() {
         val arr=rounds(); val freq=counts()

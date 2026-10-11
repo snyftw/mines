@@ -111,7 +111,10 @@ class CaptureService : Service() {
         }
         lastSignature = signature
         val newRoundResult = complete && stableFrames >= 3 && roundArmed
-        if (newRoundResult) roundArmed = false
+        if (newRoundResult) {
+            roundArmed = false
+            stableFrames = 0
+        }
         sendBroadcast(Intent("com.snyftw.mines.FRAME_RESULT").setPackage(packageName)
             .putIntegerArrayListExtra("gems",gems)
             .putIntegerArrayListExtra("bombs",bombs)
