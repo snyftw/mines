@@ -18,13 +18,16 @@ class CaptureService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var lastProcessed = 0L
     private var lastSignature = ""
+    private var stableFrames = 0
+    private var roundArmed = true
+    private var incompleteFrames = 0
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val channel = "mines_capture"
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(channel, "Mines screen capture", NotificationManager.IMPORTANCE_LOW))
         val notification = Notification.Builder(this, channel)
-            .setContentTitle("Mines V2.1 screen reader")
+            .setContentTitle("Mines V2.3 screen reader")
             .setContentText("Local visual detection active; stop in Mines Assistant")
             .setSmallIcon(android.R.drawable.ic_menu_view).build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(11, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
@@ -97,11 +100,24 @@ class CaptureService : Service() {
             }
         }
         val complete=(gems.size+bombs.size==25 && bombs.isNotEmpty())
+        val signature = gems.sorted().joinToString(",") + "|" + bombs.sorted().joinToString(",")
+        if (complete) {
+            incompleteFrames = 0
+            stableFrames = if (signature == lastSignature) stableFrames + 1 else 1
+        } else {
+            stableFrames = 0
+            incompleteFrames++
+            if (incompleteFrames >= 3) roundArmed = true
+        }
+        lastSignature = signature
+        val newRoundResult = complete && stableFrames >= 3 && roundArmed
+        if (newRoundResult) roundArmed = false
         sendBroadcast(Intent("com.snyftw.mines.FRAME_RESULT").setPackage(packageName)
             .putIntegerArrayListExtra("gems",gems)
             .putIntegerArrayListExtra("bombs",bombs)
             .putIntegerArrayListExtra("selected",selected)
             .putExtra("complete",complete)
+            .putExtra("newRoundResult",newRoundResult)
             .putExtra("status",if(complete) "Full board detected" else "Scanning tiles: ${gems.size+ bombs.size}/25"))
     }
     override fun onDestroy() {
