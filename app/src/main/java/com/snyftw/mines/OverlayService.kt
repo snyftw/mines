@@ -89,12 +89,8 @@ class OverlayService : Service() {
             suggested = (1..25).filter { it !in gems && it !in bombs }.randomOrNull(Random.Default); render()
         }
         action("Clear current display") { gems.clear(); bombs.clear(); selected.clear(); complete=false; suggested=null; render() }
-        if (android.os.Build.VERSION.SDK_INT >= 35) {
-            panel.setContentSensitivity(
-                android.view.View.CONTENT_SENSITIVITY_SENSITIVE
-            )
-        }
-        wm.addView(panel,params)
+
+wm.addView(panel,params)
         val filter = IntentFilter("com.snyftw.mines.FRAME_RESULT")
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver,filter,RECEIVER_NOT_EXPORTED)
         else @Suppress("DEPRECATION") registerReceiver(receiver,filter)
