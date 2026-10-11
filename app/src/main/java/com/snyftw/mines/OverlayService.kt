@@ -47,16 +47,16 @@ class OverlayService : Service() {
     override fun onCreate() {
         super.onCreate()
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
-        params = WindowManager.LayoutParams(dp(230), WindowManager.LayoutParams.WRAP_CONTENT,
+        params = WindowManager.LayoutParams(dp(280), WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, PixelFormat.TRANSLUCENT).apply {
-            gravity = Gravity.TOP or Gravity.START; x = dp(8); y = dp(145)
+            gravity = Gravity.TOP or Gravity.START; x = dp(8); y = dp(82)
         }
         panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL; setPadding(dp(9),dp(8),dp(9),dp(8))
             setBackgroundColor(Color.rgb(21,31,44))
         }
-        val heading = label(17f).apply { text = "☰ MINES V2.3  ·  Tap to collapse" }
+        val heading = label(14f).apply { text = "☰ MINES V3.0 · Tap to expand" }
         panel.addView(heading)
         heading.setOnClickListener { collapsed = !collapsed; details.visibility = if (collapsed) View.GONE else View.VISIBLE }
         heading.setOnTouchListener(object : View.OnTouchListener {
@@ -74,9 +74,8 @@ class OverlayService : Service() {
                 return true
             }
         })
-        details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        details = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
         panel.addView(details)
-        details.visibility = View.GONE
         status = label(13f); suggestion = label(14f, Color.rgb(135,235,165)); history = label(12f, Color.LTGRAY)
         details.addView(status); details.addView(suggestion); details.addView(history)
         board = GridLayout(this).apply { columnCount = 5 }
@@ -90,8 +89,7 @@ class OverlayService : Service() {
             suggested = (1..25).filter { it !in gems && it !in bombs }.randomOrNull(Random.Default); render()
         }
         action("Clear current display") { gems.clear(); bombs.clear(); selected.clear(); complete=false; suggested=null; render() }
-
-wm.addView(panel,params)
+        wm.addView(panel,params)
         val filter = IntentFilter("com.snyftw.mines.FRAME_RESULT")
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver,filter,RECEIVER_NOT_EXPORTED)
         else @Suppress("DEPRECATION") registerReceiver(receiver,filter)
@@ -121,16 +119,12 @@ wm.addView(panel,params)
     private fun suggest() {
         val candidates=(1..25).filter { it !in gems && it !in bombs }
         val freq=counts()
-        suggested=candidates
-            .groupBy { freq[it-1] }
-            .minByOrNull { it.key }
-            ?.value
-            ?.randomOrNull(Random.Default)
+        suggested=candidates.groupBy { freq[it-1] }.minByOrNull { it.key }?.value?.randomOrNull(Random.Default)
     }
     private fun render() {
         val arr=rounds(); val freq=counts()
         val valid=(0 until arr.length()).count { arr.optJSONObject(it)?.optJSONArray("bombs") != null }
-        status.text=if (complete) "FULL BOARD · ${gems.size} gems / ${bombs.size} bombs" else "Scanning · ${gems.size} gems / ${bombs.size} bombs"
+        status.text=if (complete) "FULL BOARD · ${gems.size} gems / ${bombs.size} bombs" else "Scanning · ${gems.size} gems / ${bombs.size} bombs · ${25-gems.size-bombs.size} unknown"
         suggestion.text=suggested?.let { "Tile $it · historical count ${freq[it-1]}/$valid (NOT predictive)" }
             ?: "Select Historical ranking to see a tile"
         history.text="Saved rounds: ${arr.length()} · Complete boards: $valid\nBright = selected · Dim = unplayed"
@@ -144,7 +138,7 @@ wm.addView(panel,params)
                 setOnClickListener { suggested=n; render() }
             }
             board.addView(t,GridLayout.LayoutParams().apply {
-                width=dp(51); height=dp(40); setMargins(dp(1),dp(1),dp(1),dp(1))
+                width=dp(46); height=dp(40); setMargins(dp(1),dp(1),dp(1),dp(1))
             })
         }
     }

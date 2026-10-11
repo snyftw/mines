@@ -27,7 +27,7 @@ class CaptureService : Service() {
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         nm.createNotificationChannel(NotificationChannel(channel, "Mines screen capture", NotificationManager.IMPORTANCE_LOW))
         val notification = Notification.Builder(this, channel)
-            .setContentTitle("Mines V2.3 screen reader")
+            .setContentTitle("Mines V3.0 screen reader")
             .setContentText("Local visual detection active; stop in Mines Assistant")
             .setSmallIcon(android.R.drawable.ic_menu_view).build()
         if (Build.VERSION.SDK_INT >= 29) startForeground(11, notification, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
@@ -91,12 +91,12 @@ class CaptureService : Service() {
                 }
             }
             val n=r*5+c+1
-            if (red>=6 && red>green/2) {
+            if (red>=20 && red>green*2) {
                 bombs.add(n)
-                if (brightRed>=5) selected.add(n)
-            } else if (green>=8) {
+                if (brightRed>=12) selected.add(n)
+            } else if (green>=24 && green>red*2) {
                 gems.add(n)
-                if (brightGreen>=8) selected.add(n)
+                if (brightGreen>=15) selected.add(n)
             }
         }
         val complete=(gems.size+bombs.size==25 && bombs.isNotEmpty())
