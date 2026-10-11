@@ -17,7 +17,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         val layout = LinearLayout(this).apply { orientation = 1; setPadding(36,48,36,24) }
         fun button(text: String, action: () -> Unit) { layout.addView(Button(this).apply { this.text = text; setOnClickListener { action() } }) }
-        layout.addView(TextView(this).apply { text = "Mines Assistant V2"; textSize = 26f })
+        layout.addView(TextView(this).apply { text = "Mines Assistant V3.1"; textSize = 26f })
         layout.addView(TextView(this).apply { text = "Floating tile tracker with optional screen reading. Suggestions do not predict mines."; textSize = 16f })
         button("1. Allow floating window") {
             if (!Settings.canDrawOverlays(this)) startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))

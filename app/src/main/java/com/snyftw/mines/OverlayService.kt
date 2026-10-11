@@ -28,6 +28,15 @@ class OverlayService : Service() {
     private var complete = false
     private var collapsed = true
     private val prefs by lazy { getSharedPreferences("mines_v2", MODE_PRIVATE) }
+    private val visibilityReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!::panel.isInitialized) return
+            when (intent?.action) {
+                "com.snyftw.mines.HIDE_OVERLAY" -> panel.visibility = View.INVISIBLE
+                "com.snyftw.mines.SHOW_OVERLAY" -> panel.visibility = View.VISIBLE
+            }
+        }
+    }
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent == null) return
@@ -56,9 +65,13 @@ class OverlayService : Service() {
             orientation = LinearLayout.VERTICAL; setPadding(dp(9),dp(8),dp(9),dp(8))
             setBackgroundColor(Color.rgb(21,31,44))
         }
-        val heading = label(14f).apply { text = "☰ MINES V3.0 · Tap to expand" }
+        val heading = label(14f).apply { text = "☰ MINES V3.1 · Tap to expand" }
         panel.addView(heading)
-        heading.setOnClickListener { collapsed = !collapsed; details.visibility = if (collapsed) View.GONE else View.VISIBLE }
+        heading.setOnClickListener {
+            collapsed = !collapsed
+            details.visibility = if (collapsed) View.GONE else View.VISIBLE
+            heading.text = if (collapsed) "☰ MINES V3.1 · Tap to expand" else "☰ MINES V3.1 · Tap to collapse"
+        }
         heading.setOnTouchListener(object : View.OnTouchListener {
             var px = 0; var py = 0; var sx = 0f; var sy = 0f; var moved = false
             override fun onTouch(v: View, event: MotionEvent): Boolean {
@@ -88,8 +101,21 @@ class OverlayService : Service() {
         action("Random unopened tile") {
             suggested = (1..25).filter { it !in gems && it !in bombs }.randomOrNull(Random.Default); render()
         }
+        action("Save verified board manually") {
+            if (complete) {
+                saveAutomatic(); render()
+            } else {
+                Toast.makeText(this, "Not saved: all 25 tiles must be identified", Toast.LENGTH_LONG).show()
+            }
+        }
         action("Clear current display") { gems.clear(); bombs.clear(); selected.clear(); complete=false; suggested=null; render() }
         wm.addView(panel,params)
+        val visibilityFilter = IntentFilter().apply {
+            addAction("com.snyftw.mines.HIDE_OVERLAY")
+            addAction("com.snyftw.mines.SHOW_OVERLAY")
+        }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(visibilityReceiver, visibilityFilter, RECEIVER_NOT_EXPORTED)
+        else @Suppress("DEPRECATION") registerReceiver(visibilityReceiver, visibilityFilter)
         val filter = IntentFilter("com.snyftw.mines.FRAME_RESULT")
         if (Build.VERSION.SDK_INT >= 33) registerReceiver(receiver,filter,RECEIVER_NOT_EXPORTED)
         else @Suppress("DEPRECATION") registerReceiver(receiver,filter)
@@ -99,6 +125,9 @@ class OverlayService : Service() {
     private fun saveAutomatic() {
         if (!complete || gems.size + bombs.size != 25 || bombs.isEmpty()) return
         val arr=rounds()
+        val last = arr.optJSONObject(arr.length() - 1)
+        if (last != null && last.optString("bombs") == JSONArray(bombs.sorted()).toString()
+            && System.currentTimeMillis() - last.optLong("timestamp") < 10000L) return
         val outcome = if (selected.any { it in bombs }) "bomb" else "unknown (possible cashout)"
         arr.put(JSONObject().put("outcome",outcome)
             .put("gems",JSONArray(gems.sorted())).put("bombs",JSONArray(bombs.sorted()))
@@ -144,6 +173,7 @@ class OverlayService : Service() {
     }
     override fun onDestroy() {
         try { unregisterReceiver(receiver) } catch (_: Exception) { }
+        try { unregisterReceiver(visibilityReceiver) } catch (_: Exception) { }
         if (::panel.isInitialized) wm.removeView(panel)
         super.onDestroy()
     }

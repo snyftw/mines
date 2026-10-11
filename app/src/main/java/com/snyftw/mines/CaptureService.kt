@@ -21,6 +21,11 @@ class CaptureService : Service() {
     private var stableFrames = 0
     private var roundArmed = true
     private var incompleteFrames = 0
+    private var hideRequestedAt = 0L
+    private var waitingForClearFrame = false
+    private fun overlayAction(action: String) {
+        sendBroadcast(Intent(action).setPackage(packageName))
+    }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val channel = "mines_capture"
@@ -47,8 +52,17 @@ class CaptureService : Service() {
         reader?.setOnImageAvailableListener({ source ->
             val image = source.acquireLatestImage() ?: return@setOnImageAvailableListener
             try {
-                if (SystemClock.elapsedRealtime() - lastProcessed < 600L) return@setOnImageAvailableListener
-                lastProcessed = SystemClock.elapsedRealtime()
+                val now = SystemClock.elapsedRealtime()
+                if (!waitingForClearFrame) {
+                    if (now - lastProcessed < 900L) return@setOnImageAvailableListener
+                    overlayAction("com.snyftw.mines.HIDE_OVERLAY")
+                    hideRequestedAt = now
+                    waitingForClearFrame = true
+                    return@setOnImageAvailableListener
+                }
+                if (now - hideRequestedAt < 220L) return@setOnImageAvailableListener
+                waitingForClearFrame = false
+                lastProcessed = now
                 val plane = image.planes[0]
                 val buffer = plane.buffer
                 val stride = plane.rowStride / plane.pixelStride
@@ -57,7 +71,10 @@ class CaptureService : Service() {
                 analyze(bitmap, image.width, image.height)
                 bitmap.recycle()
             } catch (_: Exception) { /* Keep capture alive on unusual frame formats. */ }
-            finally { image.close() }
+            finally {
+                image.close()
+                if (!waitingForClearFrame) overlayAction("com.snyftw.mines.SHOW_OVERLAY")
+            }
         }, handler)
         display = projection?.createVirtualDisplay("MinesV21", metrics.widthPixels, metrics.heightPixels,
             metrics.densityDpi, DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader?.surface, null, null)
@@ -121,9 +138,10 @@ class CaptureService : Service() {
             .putIntegerArrayListExtra("selected",selected)
             .putExtra("complete",complete)
             .putExtra("newRoundResult",newRoundResult)
-            .putExtra("status",if(complete) "Full board detected" else "Scanning tiles: ${gems.size+ bombs.size}/25"))
+            .putExtra("status",if(complete) "Full board detected" else "Scanning: ${gems.size + bombs.size}/25 recognized; ${25 - gems.size - bombs.size} unknown"))
     }
     override fun onDestroy() {
+        overlayAction("com.snyftw.mines.SHOW_OVERLAY")
         reader?.setOnImageAvailableListener(null, null)
         display?.release(); reader?.close(); projection?.stop()
         super.onDestroy()
